@@ -9,17 +9,52 @@ st.set_page_config(page_title="ניבוי מחירי דירות", page_icon="�
 
 # CSS דרך st.html — st.markdown שובר בלוק <style> עם שורות ריקות
 st.html("""
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap" rel="stylesheet">
 <style>
 html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"] { direction: rtl; }
+html, body, [class*="st-"], h1, h2, h3, h4, p, li, label, button { font-family: 'Heebo', sans-serif !important; }
+[data-testid="stAppViewContainer"] { background: linear-gradient(180deg, #eef4fc 0%, #f9f9f7 320px); }
 [data-testid="stMarkdownContainer"], [data-testid="stCaptionContainer"], h1, h2, h3, p, li { text-align: right; }
-[data-testid="stMetric"] { background: #f9f9f7; border: 1px solid #e1e0d9; border-radius: 10px; padding: 12px 16px; }
-[data-testid="stMetricValue"] { direction: ltr; text-align: right; }
+h2 { font-weight: 800 !important; letter-spacing: -0.5px; }
+h3 { font-weight: 700 !important; color: #184f95 !important; border-right: 4px solid #2a78d6; padding-right: 10px !important; margin-top: 1.6rem !important; }
+.hero { background: linear-gradient(120deg, #104281 0%, #2a78d6 60%, #1baf7a 120%); color: #fff;
+        border-radius: 22px; padding: 28px 32px; margin-bottom: 18px; box-shadow: 0 12px 30px rgba(16,66,129,.25); }
+.hero h1 { color: #fff !important; font-size: 2.3rem !important; font-weight: 800 !important; margin: 0 !important; padding: 0 !important; }
+.hero p { color: #dbe9fb !important; margin: 6px 0 0 !important; font-size: 1.05rem; }
+.hero .chips { margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+.hero .chip { background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.28); border-radius: 999px; padding: 4px 12px; font-size: .85rem; }
+/* stepper */
+.st-key-step [role="radiogroup"] { gap: 8px !important; flex-wrap: wrap; }
+.st-key-step label { background: #fff; border: 1px solid #e1e0d9; border-radius: 999px; padding: 8px 16px !important;
+                     box-shadow: 0 1px 2px rgba(0,0,0,.04); transition: all .15s ease; cursor: pointer; margin: 0 !important; }
+.st-key-step label:hover { border-color: #2a78d6; transform: translateY(-1px); box-shadow: 0 4px 10px rgba(42,120,214,.15); }
+.st-key-step label:has(input:checked) { background: #2a78d6; border-color: #2a78d6; box-shadow: 0 6px 14px rgba(42,120,214,.35); }
+.st-key-step label:has(input:checked) p { color: #fff !important; font-weight: 700; }
+.st-key-step label > div:first-child { display: none; }
+/* cards */
+[data-testid="stMetric"] { background: #fff; border: 1px solid #e6ecf5; border-radius: 16px; padding: 14px 18px;
+                           box-shadow: 0 4px 14px rgba(16,66,129,.06); }
+[data-testid="stMetricValue"] { direction: ltr; text-align: right; color: #104281; font-weight: 800; }
+[data-testid="stPlotlyChart"], [data-testid="stDataFrame"] { background: #fff; border-radius: 16px; padding: 6px;
+                           box-shadow: 0 4px 14px rgba(16,66,129,.06); }
+[data-testid="stForm"] { background: #fff; border-radius: 18px; border: 1px solid #e6ecf5; box-shadow: 0 6px 18px rgba(16,66,129,.08); }
+[data-testid="stFormSubmitButton"] button { background: linear-gradient(120deg, #2a78d6, #1baf7a) !important; border: 0 !important;
+                           border-radius: 12px !important; padding: 10px 28px !important; font-weight: 700 !important; }
 .ltr { direction: ltr; unicode-bidi: isolate; }
 </style>
 """)
 
 BLUE, ORANGE = "#2a78d6", "#eb6834"
 INK2, MUTED, GRID = "#52514e", "#898781", "#e1e0d9"
+
+LABELS = {
+    "bedrooms": "חדרי שינה", "bathrooms": "חדרי רחצה", "sqft_living": "שטח מגורים",
+    "sqft_lot": "שטח מגרש", "floors": "קומות", "waterfront": "חזית למים",
+    "sqft_basement": "שטח מרתף", "age": "גיל הבניין", "sqft_above": "שטח מעל הקרקע", "yr_built": "שנת בנייה",
+    "view": "נוף", "condition": "מצב",
+    **{f"view_{i}": f"נוף {i} (מול 0)" for i in range(1, 5)},
+    **{f"condition_{i}": f"מצב {i} (מול 1)" for i in range(2, 6)},
+}
 
 STEPS = ["1 · הכרת הנתונים", "2 · פריפרוססינג", "3 · חלוקה", "4 · אימון",
          "5 · הערכה", "6 · פרדיקציה"]
@@ -61,8 +96,21 @@ def base_layout(fig, height=360):
     return fig
 
 
-st.title("🏠 ניבוי מחירי דירות — רגרסיה לינארית")
-st.caption("תרגיל למידת מכונה · חלק א · כל שלב בתהליך בלשונית משלו")
+def hbar_layout(fig, height):
+    base_layout(fig, height)
+    fig.update_yaxes(side="right", automargin=False)
+    fig.update_layout(margin=dict(l=10, r=150, t=30, b=10))
+    return fig
+
+
+st.html("""
+<div class="hero">
+  <h1>🏠 כמה שווה הדירה?</h1>
+  <p>ניבוי מחירי דירות עם רגרסיה לינארית — מהנתונים הגולמיים ועד תחזית לדירה חדשה</p>
+  <div class="chips"><span class="chip">📊 2,999 עסקאות</span><span class="chip">🧹 פריפרוססינג</span>
+  <span class="chip">📈 Linear Regression</span><span class="chip">🎯 פרדיקציה חיה</span></div>
+</div>
+""")
 
 step = st.radio("שלב", STEPS, horizontal=True, label_visibility="collapsed", key="step")
 idx = STEPS.index(step) + 1
@@ -87,10 +135,10 @@ if idx == 1:
     st.subheader("קשר כל משתנה למחיר (קורלציה)")
     corr = raw.corr(numeric_only=True)["price"].drop("price").sort_values()
     fig = go.Figure(go.Bar(
-        x=corr.values, y=corr.index, orientation="h", marker_color=BLUE,
+        x=corr.values, y=[LABELS.get(c, c) for c in corr.index], orientation="h", marker_color=BLUE,
         hovertemplate="%{y}: %{x:.2f}<extra></extra>"))
     fig.update_xaxes(range=[0, 1], title="קורלציה עם המחיר")
-    st.plotly_chart(base_layout(fig, 400), width="stretch")
+    st.plotly_chart(hbar_layout(fig, 400), width="stretch")
     st.caption("שטח המגורים הוא המשתנה הקשור ביותר למחיר. גודל המגרש, המצב ושנת הבנייה כמעט לא קשורים אליו ישירות.")
 
 # ---------------------------------------------------------------- שלב 2
@@ -182,13 +230,6 @@ if idx == 2:
                        "housing_clean.csv", "text/csv")
 
 # ---------------------------------------------------------------- שלבים 3–6
-LABELS = {
-    "bedrooms": "חדרי שינה", "bathrooms": "חדרי רחצה", "sqft_living": "שטח מגורים",
-    "sqft_lot": "שטח מגרש", "floors": "קומות", "waterfront": "חזית למים",
-    "sqft_basement": "שטח מרתף", "age": "גיל הבניין",
-    **{f"view_{i}": f"נוף {i} (מול 0)" for i in range(1, 5)},
-    **{f"condition_{i}": f"מצב {i} (מול 1)" for i in range(2, 6)},
-}
 
 if idx >= 3:
     clean, rep = get_clean()
@@ -255,7 +296,7 @@ if idx == 4:
         hovertemplate="%{y}: %{x:$,.0f}<extra></extra>"))
     fig.add_vline(x=0, line=dict(color="#c3c2b7", width=1))
     fig.update_xaxes(title="השפעה על המחיר ($)", tickformat="$,.0s")
-    st.plotly_chart(base_layout(fig, 520), width="stretch")
+    st.plotly_chart(hbar_layout(fig, 520), width="stretch")
     st.markdown(
         "- **כחול** = מעלה את המחיר, **כתום** = מוריד.\n"
         "- משתנים מספריים: ההשפעה של **סטיית תקן אחת** (למשל כ-775 sqft בשטח המגורים). "
@@ -368,5 +409,5 @@ if idx == 6:
         hovertemplate="%{y}: %{x:+$,.0f}<extra></extra>"))
     fig.add_vline(x=0, line=dict(color="#c3c2b7", width=1))
     fig.update_xaxes(title=f"תוספת/הפחתה ממחיר הבסיס {fmt_usd(base)}", tickformat="$,.0s")
-    st.plotly_chart(base_layout(fig, 380), width="stretch")
+    st.plotly_chart(hbar_layout(fig, 380), width="stretch")
     st.caption("מחיר הבסיס + סכום כל העמודות = המחיר החזוי.")
