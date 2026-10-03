@@ -339,7 +339,7 @@ if idx == 6:
 
     c1, c2 = st.columns([1, 2])
     c1.metric("מחיר חזוי", fmt_usd(price))
-    c2.metric("טווח סביר (80% מהמקרים)", f"{fmt_usd(max(lo, 0))} – {fmt_usd(hi)}")
+    c2.metric("טווח סביר (80% מהמקרים)", f"{fmt_usd(max(lo, 0))} – {fmt_usd(hi)}".replace("$", "\\$"))
     st.caption(f"≈ {sqft_living / 10.764:,.0f} מ\"ר · הטווח מחושב מהטעויות של המודל על נתוני המבחן.")
 
     st.subheader("האם התוצאה סבירה?")
